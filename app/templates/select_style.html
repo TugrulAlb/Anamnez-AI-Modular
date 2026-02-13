@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Psikolog Seç - Anamnez AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .dark .gradient-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .dark .glass-card {
+            background: rgba(30, 27, 75, 0.95);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+        .toggle-icon { transition: transform 0.3s ease; }
+        .toggle-icon:hover { transform: rotate(20deg); }
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        /* Anti-blur fix for hover animations */
+        .card-hover {
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen font-sans transition-colors duration-300">
+    
+    <!-- Navbar -->
+    <nav class="glass-card shadow-lg fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <!-- Logo - Tıklanabilir -->
+            <a href="{{ url_for('main.select_style') }}" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <span class="text-2xl">🧠</span>
+                <span class="font-bold text-gray-700 dark:text-gray-200">Anamnez <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">AI</span></span>
+            </a>
+            
+            <!-- User Panel -->
+            <div class="flex items-center gap-4">
+                <!-- Dark Mode Toggle -->
+                <button id="dark-mode-toggle" class="toggle-icon text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Tema Değiştir">
+                    <span id="theme-icon">🌙</span>
+                </button>
+                <span class="text-sm text-gray-600 dark:text-gray-300">Hoş geldin, <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ current_user.username }}</span></span>
+                <a href="{{ url_for('main.logout') }}" class="text-sm text-white bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 px-4 py-2 rounded-lg shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5">
+                    🚪 Çıkış
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Spacer for fixed navbar -->
+    <div class="h-16"></div>
+    
+    <div class="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
+    
+    <!-- Decorative Elements -->
+    <div class="absolute top-24 left-10 text-6xl opacity-20 floating">🧠</div>
+    <div class="absolute bottom-10 right-10 text-6xl opacity-20 floating" style="animation-delay: 1s;">💭</div>
+
+    <div class="glass-card shadow-2xl rounded-3xl max-w-2xl w-full p-8 space-y-6 relative overflow-hidden">
+        
+        <!-- Top Decoration -->
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+        
+        <div class="text-center pt-4">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Bugün seninle konuşacak psikoloğunu seç
+            </h1>
+        </div>
+        
+        <form method="POST" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <!-- Samimi -->
+                <label class="cursor-pointer">
+                    <input type="radio" name="tarz" value="samimi" class="hidden peer" required>
+                    <div class="card-hover p-5 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-indigo-400 hover:scale-105 hover:shadow-xl hover:shadow-indigo-200 dark:hover:shadow-indigo-900 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 peer-checked:scale-105 transition-all duration-300 text-center">
+                        <img src="https://api.dicebear.com/9.x/toon-head/svg?seed=i&backgroundColor=c0aede&eyes=happy&mouth=laugh" alt="İrem" class="w-20 h-20 mx-auto rounded-full shadow-lg mb-3">
+                        <h3 class="font-bold text-lg text-indigo-700 dark:text-indigo-400">İrem</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Sıcakkanlı ve Samimi</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Arkadaşça, rahatlatıcı bir sohbet ortamı</p>
+                    </div>
+                </label>
+
+                <!-- Profesyonel -->
+                <label class="cursor-pointer">
+                    <input type="radio" name="tarz" value="profesyonel" class="hidden peer">
+                    <div class="card-hover p-5 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-indigo-400 hover:scale-105 hover:shadow-xl hover:shadow-indigo-200 dark:hover:shadow-indigo-900 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 peer-checked:scale-105 transition-all duration-300 text-center">
+                        <img src="https://api.dicebear.com/9.x/toon-head/svg?seed=Tugrul&backgroundColor=b6e3f4&eyes=happy&mouth=laugh" alt="Tuğrul" class="w-20 h-20 mx-auto rounded-full shadow-lg mb-3">
+                        <h3 class="font-bold text-lg text-indigo-700 dark:text-indigo-400">Tuğrul</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Profesyonel ve Deneyimli</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Sakin, güven veren bilimsel yaklaşım</p>
+                    </div>
+                </label>
+
+                <!-- Duygusal -->
+                <label class="cursor-pointer">
+                    <input type="radio" name="tarz" value="duygusal" class="hidden peer">
+                    <div class="card-hover p-5 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-indigo-400 hover:scale-105 hover:shadow-xl hover:shadow-indigo-200 dark:hover:shadow-indigo-900 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 peer-checked:scale-105 transition-all duration-300 text-center">
+                        <img src="https://api.dicebear.com/9.x/toon-head/svg?seed=yaso&backgroundColor=ffd5dc&eyes=happy&mouth=laugh" alt="Yasemin" class="w-20 h-20 mx-auto rounded-full shadow-lg mb-3">
+                        <h3 class="font-bold text-lg text-indigo-700 dark:text-indigo-400">Yasemin</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Duygusal ve Empatik</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Hislerini derinden anlayan, şefkatli</p>
+                    </div>
+                </label>
+
+                <!-- Gerçekçi -->
+                <label class="cursor-pointer">
+                    <input type="radio" name="tarz" value="gercekci" class="hidden peer">
+                    <div class="card-hover p-5 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-indigo-400 hover:scale-105 hover:shadow-xl hover:shadow-indigo-200 dark:hover:shadow-indigo-900 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 peer-checked:scale-105 transition-all duration-300 text-center">
+                        <img src="https://api.dicebear.com/9.x/toon-head/svg?seed=ali&backgroundColor=d1f4d1&eyes=happy&mouth=laugh" alt="Ali" class="w-20 h-20 mx-auto rounded-full shadow-lg mb-3">
+                        <h3 class="font-bold text-lg text-indigo-700 dark:text-indigo-400">Ali</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Gerçekçi ve Doğrudan</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Net, açık ve dürüst geri bildirimler</p>
+                    </div>
+                </label>
+
+            </div>
+
+            <div class="text-center pt-4">
+                <button type="submit" 
+                    class="btn-gradient text-white font-bold py-3 px-8 rounded-xl shadow-lg">
+                    Başla ➡️
+                </button>
+            </div>
+        </form>
+
+        <p class="text-center text-gray-400 dark:text-gray-500 text-xs">
+            * Bu sistem klinik tanı koymaz, yalnızca yönlendirme amaçlıdır.
+        </p>
+
+    </div>
+    
+    </div> <!-- flex container end -->
+
+    <script>
+        const html = document.documentElement;
+        const themeIcon = document.getElementById('theme-icon');
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+            themeIcon.textContent = '☀️';
+        }
+        document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+            html.classList.toggle('dark');
+            if (html.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+                themeIcon.textContent = '☀️';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeIcon.textContent = '🌙';
+            }
+        });
+    </script>
+</body>
+</html>

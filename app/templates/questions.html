@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Görüşme - Anamnez AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .dark .gradient-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .dark .glass-card {
+            background: rgba(30, 27, 75, 0.95);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+        .toggle-icon { transition: transform 0.3s ease; }
+        .toggle-icon:hover { transform: rotate(20deg); }
+        .chat-bubble-psikolog {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .chat-bubble-user {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-gradient:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* Mic button recording state */
+        .mic-recording {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            animation: micPulse 1.5s infinite;
+        }
+        @keyframes micPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Ready Button - Animated Gradient */
+        .ready-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .ready-btn:hover {
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+        /* Floating Ready Button */
+        .floating-ready-btn {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            z-index: 40;
+            animation: floatIn 0.5s ease-out, pulse 2s infinite;
+        }
+        @keyframes floatIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.8); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
+            50% { box-shadow: 0 10px 40px rgba(102, 126, 234, 0.6); }
+        }
+        /* Prevent body scroll, only chat scrolls */
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        .chat-layout {
+            height: calc(100vh - 4rem);
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body class="gradient-bg font-sans transition-colors duration-300">
+    
+    <!-- Navbar -->
+    <nav class="glass-card shadow-lg fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <!-- Logo - Tıklanabilir -->
+            <a href="{{ url_for('main.close_chat') }}" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <span class="text-2xl">🧠</span>
+                <span class="font-bold text-gray-700 dark:text-gray-200">Anamnez <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">AI</span></span>
+            </a>
+            
+            <!-- User Panel -->
+            <div class="flex items-center gap-4">
+                <!-- Dark Mode Toggle -->
+                <button id="dark-mode-toggle" class="toggle-icon text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Tema Değiştir">
+                    <span id="theme-icon">🌙</span>
+                </button>
+                <span class="text-sm text-gray-600 dark:text-gray-300 hidden sm:inline">Hoş geldin, <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ current_user.username }}</span></span>
+                <a href="{{ url_for('main.logout') }}" class="text-sm text-white bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 px-3 py-2 rounded-lg shadow-md transition-all hover:shadow-lg">
+                    🚪 Çıkış
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Spacer for fixed navbar -->
+    <div class="h-16"></div>
+    
+    <div class="max-w-2xl mx-auto px-4 chat-layout">
+        
+        <!-- Header -->
+        <div class="glass-card rounded-2xl shadow-lg p-4 mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="{{ psikolog.avatar }}" 
+                     alt="{{ psikolog.isim }}" 
+                     class="w-12 h-12 rounded-full shadow-lg bg-indigo-100">
+                <div>
+                    <h2 class="font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{{ psikolog.isim }}</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ psikolog.aciklama }}</p>
+                    <p id="connection-status" class="text-xs text-green-500 hidden">● Bağlı</p>
+                </div>
+            </div>
+            <a href="{{ url_for('main.close_chat') }}" class="text-sm text-orange-600 hover:text-orange-800 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-lg transition-all">
+                ✕ Sohbeti Kapat
+            </a>
+        </div>
+
+        <!-- Chat Container -->
+        <div id="chat-container" class="flex-1 glass-card rounded-2xl shadow-lg p-4 mb-4 overflow-y-auto">
+            <div id="messages" class="space-y-4">
+                {% for item in history %}
+                    {% if item.tip == "psikolog" %}
+                    <!-- Psikolog mesajı -->
+                    <div class="flex items-start gap-3 psikolog-msg">
+                        <img src="{{ psikolog.avatar }}" 
+                             alt="{{ psikolog.isim }}" 
+                             class="w-8 h-8 rounded-full shadow flex-shrink-0 bg-indigo-100">
+                        <div class="chat-bubble-psikolog text-white px-4 py-3 rounded-2xl rounded-tl-sm max-w-[85%] shadow-md">
+                            <p class="text-sm leading-relaxed">{{ item.mesaj }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Kullanıcı mesajı -->
+                    <div class="flex items-start gap-3 justify-end user-msg">
+                        <div class="chat-bubble-user text-indigo-900 px-4 py-3 rounded-2xl rounded-tr-sm max-w-[85%] shadow-md">
+                            <p class="text-sm leading-relaxed">{{ item.mesaj }}</p>
+                        </div>
+                        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 text-sm flex-shrink-0">
+                            👤
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Input Area (WebSocket) - Fixed at bottom -->
+        <div class="glass-card rounded-2xl shadow-lg p-4 flex-shrink-0 mb-4">
+            <!-- Transcribing Status -->
+            <div id="voice-status" class="hidden mb-2 text-center">
+                <span class="inline-flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-4 py-2 rounded-xl">
+                    <span id="voice-status-icon">🎤</span>
+                    <span id="voice-status-text">Dinleniyor...</span>
+                </span>
+            </div>
+            <div class="flex gap-3">
+                <textarea
+                    id="message-input"
+                    rows="2"
+                    class="flex-1 p-3 rounded-xl border border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
+                    placeholder="Mesajınızı yazın..."></textarea>
+                <!-- Mikrofon Butonu -->
+                <button
+                    id="mic-btn"
+                    class="btn-gradient text-white font-semibold px-4 rounded-xl shadow-md flex items-center justify-center transition-all relative"
+                    title="Sesli Mesaj Gönder (Basılı Tut)">
+                    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
+                    </svg>
+                    <!-- Kayıt animasyonu -->
+                    <span id="mic-recording-dot" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                </button>
+                <button
+                    id="send-btn"
+                    class="btn-gradient text-white font-semibold px-6 rounded-xl shadow-md flex items-center">
+                    <span class="hidden sm:inline mr-2">Gönder</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Dark Mode - sayfa yüklenince hemen uygula
+        (function() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+            if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                html.classList.add('dark');
+                themeIcon.textContent = '☀️';
+            }
+            document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+                html.classList.toggle('dark');
+                if (html.classList.contains('dark')) {
+                    localStorage.setItem('theme', 'dark');
+                    themeIcon.textContent = '☀️';
+                } else {
+                    localStorage.setItem('theme', 'light');
+                    themeIcon.textContent = '🌙';
+                }
+            });
+        })();
+
+        // Socket.IO bağlantısı
+        const socket = io();
+        
+        // DOM elementleri
+        const chatContainer = document.getElementById('chat-container');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const connectionStatus = document.getElementById('connection-status');
+        
+        // Psikolog bilgisi
+        const psikologIsim = "{{ psikolog.isim }}";
+        const psikologAvatar = "{{ psikolog.avatar }}";
+
+        // Sohbet sonuna scroll
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        scrollToBottom();
+
+        // Bağlantı durumu
+        socket.on('connect', () => {
+            console.log('✅ WebSocket bağlantısı kuruldu');
+            connectionStatus.classList.remove('hidden');
+            connectionStatus.textContent = '● Bağlı';
+            connectionStatus.classList.remove('text-red-500');
+            connectionStatus.classList.add('text-green-500');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('❌ WebSocket bağlantısı kesildi');
+            connectionStatus.textContent = '● Bağlantı kesildi';
+            connectionStatus.classList.remove('text-green-500');
+            connectionStatus.classList.add('text-red-500');
+        });
+
+        // Mesaj gönder
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            // Input'u temizle ve disable et
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            messageInput.disabled = true;
+
+            // Kullanıcı mesajını ekle
+            addUserMessage(message);
+
+            // Yazıyor göstergesi ekle
+            addTypingIndicator();
+
+            // WebSocket ile mesajı gönder
+            socket.emit('user_message', { message: message });
+            
+            scrollToBottom();
+        }
+
+        // Kullanıcı mesajını DOM'a ekle
+        function addUserMessage(text) {
+            const msgHtml = `
+                <div class="flex items-start gap-3 justify-end user-msg fade-in">
+                    <div class="chat-bubble-user text-indigo-900 px-4 py-3 rounded-2xl rounded-tr-sm max-w-[85%] shadow-md">
+                        <p class="text-sm leading-relaxed">${escapeHtml(text)}</p>
+                    </div>
+                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 text-sm flex-shrink-0">
+                        👤
+                    </div>
+                </div>
+            `;
+            messagesDiv.insertAdjacentHTML('beforeend', msgHtml);
+        }
+
+        // Yazıyor göstergesi ekle
+        function addTypingIndicator() {
+            const typingHtml = `
+                <div id="typing-indicator" class="flex items-start gap-3 psikolog-msg fade-in">
+                    <img src="${psikologAvatar}" alt="${psikologIsim}" class="w-8 h-8 rounded-full shadow flex-shrink-0 bg-indigo-100">
+                    <div class="chat-bubble-psikolog text-white px-4 py-3 rounded-2xl rounded-tl-sm shadow-md">
+                        <div class="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            messagesDiv.insertAdjacentHTML('beforeend', typingHtml);
+            scrollToBottom();
+        }
+
+        // Yazıyor göstergesini kaldır
+        function removeTypingIndicator() {
+            const typing = document.getElementById('typing-indicator');
+            if (typing) typing.remove();
+        }
+
+        // Psikolog mesajını DOM'a ekle
+        function addPsikologMessage(text) {
+            removeTypingIndicator();
+            
+            const msgHtml = `
+                <div class="flex items-start gap-3 psikolog-msg fade-in">
+                    <img src="${psikologAvatar}" alt="${psikologIsim}" class="w-8 h-8 rounded-full shadow flex-shrink-0 bg-indigo-100">
+                    <div class="chat-bubble-psikolog text-white px-4 py-3 rounded-2xl rounded-tl-sm max-w-[85%] shadow-md">
+                        <p class="text-sm leading-relaxed">${escapeHtml(text)}</p>
+                    </div>
+                </div>
+            `;
+            messagesDiv.insertAdjacentHTML('beforeend', msgHtml);
+            scrollToBottom();
+            
+            // Input'u tekrar aktif et
+            sendBtn.disabled = false;
+            messageInput.disabled = false;
+            messageInput.focus();
+        }
+
+        // AI yanıtı geldiğinde
+        socket.on('ai_response', (data) => {
+            console.log('🤖 AI yanıtı:', data);
+            addPsikologMessage(data.message);
+        });
+
+        // Psikolog analiz için hazır - Non-intrusive Floating Button
+        socket.on('ready_for_diagnosis', (data) => {
+            console.log('✅ Psikolog analiz için hazır!');
+            
+            // Zaten buton varsa tekrar ekleme
+            if (document.getElementById('floating-ready-btn')) return;
+            
+            // Floating buton oluştur - Input'u BLOKE ETME
+            const floatingBtn = document.createElement('div');
+            floatingBtn.id = 'floating-ready-btn';
+            floatingBtn.className = 'floating-ready-btn';
+            floatingBtn.innerHTML = `
+                <a href="/result" class="ready-btn flex items-center gap-2 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-1">
+                    <span class="text-lg">🧠</span>
+                    <span class="text-sm">Psikolog Hazır: Analizi Gör</span>
+                </a>
+            `;
+            document.body.appendChild(floatingBtn);
+        });
+
+        // Sohbet bittiğinde (eski - artık kullanılmıyor ama fallback olarak kalsın)
+        socket.on('chat_complete', (data) => {
+            console.log('✅ Sohbet tamamlandı');
+            removeTypingIndicator();
+            
+            // Sonuç sayfasına yönlendir
+            setTimeout(() => {
+                window.location.href = data.redirect || '/result';
+            }, 500);
+        });
+
+        // Hata durumu
+        socket.on('error', (data) => {
+            console.error('❌ Hata:', data);
+            removeTypingIndicator();
+            addPsikologMessage('Bir hata oluştu. Lütfen tekrar deneyin.');
+            sendBtn.disabled = false;
+            messageInput.disabled = false;
+        });
+
+        // XSS koruması
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Gönder butonu tıklama
+        sendBtn.addEventListener('click', sendMessage);
+
+        // Enter ile gönder (Shift+Enter ile yeni satır)
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // ==========================================
+        //  🎤 SESLI MESAJ - Push-to-Talk / Toggle
+        // ==========================================
+        const micBtn = document.getElementById('mic-btn');
+        const micIcon = document.getElementById('mic-icon');
+        const micRecordingDot = document.getElementById('mic-recording-dot');
+        const voiceStatus = document.getElementById('voice-status');
+        const voiceStatusIcon = document.getElementById('voice-status-icon');
+        const voiceStatusText = document.getElementById('voice-status-text');
+        
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let holdTimer = null;
+        let isHoldMode = false; // true = basılı tut modu, false = toggle modu
+
+        // Mikrofon izni ve MediaRecorder başlat
+        async function startRecording() {
+            // HTTPS kontrolü (localhost hariç)
+            if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                alert('⚠️ Güvenlik nedeniyle mikrofon sadece HTTPS bağlantılarda çalışır.\n\nÇözüm: http://127.0.0.1:5000 adresini kullanın.');
+                return;
+            }
+
+            // MediaDevices API desteği kontrolü
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('❌ Tarayıcınız mikrofon desteği sunmuyor.\n\nLütfen güncel Chrome, Firefox veya Safari kullanın.');
+                return;
+            }
+
+            try {
+                console.log('🎤 Mikrofon izni isteniyor...');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { 
+                        echoCancellation: true, 
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        sampleRate: { ideal: 16000 }
+                    } 
+                });
+                
+                console.log('✅ Mikrofon izni verildi');
+                
+                // Codec desteği kontrolü
+                let mimeType;
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    mimeType = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                    mimeType = 'audio/webm';
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    mimeType = 'audio/mp4';
+                } else {
+                    console.warn('⚠️ Desteklenen codec bulunamadı, varsayılan kullanılacak');
+                    mimeType = '';
+                }
+                
+                console.log('🎵 Codec:', mimeType || 'default');
+                
+                mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+                
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    // Mikrofon stream'ini kapat
+                    stream.getTracks().forEach(t => t.stop());
+                    
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    
+                    // Çok kısa kayıtları (< 0.5 sn) gönderme
+                    if (audioBlob.size < 5000) {
+                        console.log('⚠️ Kayıt çok kısa, gönderilmedi');
+                        showVoiceStatus('⚠️', 'Kayıt çok kısa, tekrar deneyin', 2000);
+                        return;
+                    }
+                    
+                    // UI güncelle - dinamik analiz mesajları
+                    sendBtn.disabled = true;
+                    messageInput.disabled = true;
+                    micBtn.disabled = true;
+                    startTranscriptionAnimation();
+                    
+                    // Blob'u ArrayBuffer'a çevir ve gönder
+                    audioBlob.arrayBuffer().then(buffer => {
+                        socket.emit('audio_message', buffer);
+                        console.log(`🎤 Ses gönderildi: ${(audioBlob.size / 1024).toFixed(1)} KB`);
+                    });
+                };
+                
+                mediaRecorder.start(250); // 250ms chunk'lar
+                isRecording = true;
+                updateMicUI(true);
+                showVoiceStatus('🔴', 'Dinleniyor... Konuşun');
+                console.log('🎤 Kayıt başladı');
+                
+            } catch (err) {
+                console.error('❌ Mikrofon hatası:', err);
+                console.error('Hata detayı:', {
+                    name: err.name,
+                    message: err.message,
+                    constraint: err.constraint
+                });
+                
+                let errorMsg = 'Mikrofon açılamadı';
+                
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    errorMsg = 'Mikrofon izni reddedildi!\n\n1. Tarayıcı ayarlarından mikrofon izni verin\n2. Sayfayı yenileyin\n3. Tekrar deneyin';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    errorMsg = 'Mikrofon bulunamadı!\n\nLütfen bilgisayarınızda mikrofon bağlı olduğundan emin olun.';
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    errorMsg = 'Mikrofon meşgul!\n\nBaşka bir uygulama mikrofonu kullanıyor olabilir.';
+                } else if (err.name === 'OverconstrainedError') {
+                    errorMsg = 'Mikrofon ayarları uyumsuz!\n\nFarklı bir mikrofon deneyin.';
+                } else if (err.name === 'SecurityError') {
+                    errorMsg = 'Güvenlik hatası!\n\nHTTPS kullanın veya http://127.0.0.1:5000 adresine geçin.';
+                } else {
+                    errorMsg = `Bilinmeyen hata:\n${err.message}\n\nTarayıcı konsolu kontrol edin (F12).`;
+                }
+                
+                alert('❌ ' + errorMsg);
+                showVoiceStatus('❌', errorMsg.split('\n')[0], 5000);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                isRecording = false;
+                updateMicUI(false);
+                console.log('🎤 Kayıt durduruldu');
+            }
+        }
+
+        function updateMicUI(recording) {
+            if (recording) {
+                micBtn.classList.add('ring-2', 'ring-red-400', 'ring-offset-2');
+                micBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                micRecordingDot.classList.remove('hidden');
+            } else {
+                micBtn.classList.remove('ring-2', 'ring-red-400', 'ring-offset-2');
+                micBtn.style.background = '';
+                micRecordingDot.classList.add('hidden');
+            }
+        }
+
+        // Transkripsiyon sırasında dönen dinamik mesajlar
+        let transcriptionAnimInterval = null;
+        function startTranscriptionAnimation() {
+            const steps = [
+                { icon: '🔄', text: 'Ses verisi gönderiliyor...' },
+                { icon: '🧠', text: 'Ses kalıpları analiz ediliyor...' },
+                { icon: '🗣️', text: 'Konuşma tanınıyor...' },
+                { icon: '✍️', text: 'Metin oluşturuluyor...' },
+                { icon: '🔍', text: 'Doğruluk kontrol ediliyor...' }
+            ];
+            let stepIndex = 0;
+            
+            // İlk mesajı hemen göster
+            showVoiceStatus(steps[0].icon, steps[0].text);
+            
+            // Önceki animasyonu temizle
+            if (transcriptionAnimInterval) clearInterval(transcriptionAnimInterval);
+            
+            // Her 1.5 saniyede mesajı değiştir
+            transcriptionAnimInterval = setInterval(() => {
+                stepIndex = (stepIndex + 1) % steps.length;
+                voiceStatusIcon.textContent = steps[stepIndex].icon;
+                voiceStatusText.textContent = steps[stepIndex].text;
+            }, 1500);
+        }
+        
+        function stopTranscriptionAnimation() {
+            if (transcriptionAnimInterval) {
+                clearInterval(transcriptionAnimInterval);
+                transcriptionAnimInterval = null;
+            }
+        }
+
+        function showVoiceStatus(icon, text, autoHideMs) {
+            voiceStatusIcon.textContent = icon;
+            voiceStatusText.textContent = text;
+            voiceStatus.classList.remove('hidden');
+            
+            if (autoHideMs) {
+                setTimeout(() => voiceStatus.classList.add('hidden'), autoHideMs);
+            }
+        }
+
+        // Toggle modu: tıkla başlat, tekrar tıkla durdur
+        micBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        // Whisper transkripsiyon sonucu geldiğinde
+        socket.on('transcription_result', (data) => {
+            console.log('📝 Transkripsiyon:', data.text);
+            stopTranscriptionAnimation();
+            showVoiceStatus('✅', 'Çevrildi! Mesajı kontrol edip gönderin', 3000);
+            
+            // Metni textarea'ya yaz (kullanıcı düzenleyebilsin)
+            messageInput.value = data.text;
+            messageInput.focus();
+            
+            // Auto-resize tetikle
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+            
+            // Input'ları tekrar aktif et
+            sendBtn.disabled = false;
+            messageInput.disabled = false;
+            micBtn.disabled = false;
+        });
+
+        // Transkripsiyon durum güncellemeleri
+        socket.on('transcription_status', (data) => {
+            if (data.status === 'processing') {
+                startTranscriptionAnimation();
+            } else if (data.status === 'empty') {
+                stopTranscriptionAnimation();
+                showVoiceStatus('⚠️', 'Ses algılanamadı, tekrar deneyin', 3000);
+                sendBtn.disabled = false;
+                messageInput.disabled = false;
+                micBtn.disabled = false;
+            } else if (data.status === 'error') {
+                stopTranscriptionAnimation();
+                showVoiceStatus('❌', 'Hata: ' + (data.message || 'Bilinmeyen hata'), 4000);
+                sendBtn.disabled = false;
+                messageInput.disabled = false;
+                micBtn.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+</html>

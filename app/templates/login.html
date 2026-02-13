@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Giriş Yap - Anamnez AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .dark .gradient-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .dark .glass-card {
+            background: rgba(30, 27, 75, 0.95);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+        .toggle-icon { transition: transform 0.3s ease; }
+        .toggle-icon:hover { transform: rotate(20deg); }
+        .input-glow:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
+
+    <!-- Dark Mode Toggle -->
+    <button id="dark-mode-toggle" class="toggle-icon fixed top-4 right-4 z-50 text-2xl p-3 rounded-xl bg-white/20 dark:bg-gray-800/50 backdrop-blur-md shadow-lg hover:bg-white/30 dark:hover:bg-gray-700/50 transition-colors" title="Tema Değiştir">
+        <span id="theme-icon">🌙</span>
+    </button>
+
+    <!-- Decorative Elements -->
+    <div class="absolute top-10 left-10 text-6xl opacity-20 floating">🧠</div>
+    <div class="absolute bottom-10 right-10 text-6xl opacity-20 floating" style="animation-delay: 1s;">💭</div>
+
+    <div class="glass-card w-full max-w-md p-12 rounded-3xl shadow-2xl relative overflow-hidden">
+        
+        <!-- Top Decoration -->
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+        
+        <!-- Logo & Title -->
+        <div class="text-center mb-8">
+            <div class="text-5xl mb-4">🧠</div>
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Anamnez AI
+            </h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm">Yapay Zeka Destekli Psikolojik Değerlendirme</p>
+        </div>
+
+        <form method="POST" class="space-y-5">
+            <div class="relative">
+                <label class="block text-gray-600 dark:text-gray-300 text-sm font-medium mb-2">
+                    <span class="flex items-center gap-2">
+                        👤 Kullanıcı Adı
+                    </span>
+                </label>
+                <input type="text" name="username" required
+                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-xl focus:outline-none focus:border-indigo-500 input-glow transition-all duration-300"
+                    placeholder="Kullanıcı adını giriniz" />
+            </div>
+
+            <div class="relative">
+                <label class="block text-gray-600 dark:text-gray-300 text-sm font-medium mb-2">
+                    <span class="flex items-center gap-2">
+                        🔒 Şifre
+                    </span>
+                </label>
+                <input type="password" name="password" required
+                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-xl focus:outline-none focus:border-indigo-500 input-glow transition-all duration-300"
+                    placeholder="••••••••" />
+            </div>
+
+            <button type="submit"
+                class="w-full btn-gradient text-white font-semibold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 mt-6">
+                <span>Giriş Yap</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </form>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="mt-6">
+              {% for category, message in messages %}
+                {% if category == 'error' %}
+                <div class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-center text-sm flex items-center justify-center gap-2">
+                    <span>⚠️</span> {{ message }}
+                </div>
+                {% else %}
+                <div class="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-xl text-center text-sm flex items-center justify-center gap-2">
+                    <span>✅</span> {{ message }}
+                </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+    </div>
+
+    <script>
+        const html = document.documentElement;
+        const themeIcon = document.getElementById('theme-icon');
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+            themeIcon.textContent = '☀️';
+        }
+        document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+            html.classList.toggle('dark');
+            if (html.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+                themeIcon.textContent = '☀️';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeIcon.textContent = '🌙';
+            }
+        });
+    </script>
+</body>
+</html>
