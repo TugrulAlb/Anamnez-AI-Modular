@@ -1,0 +1,19 @@
+services:
+  anamnez-ai:
+    build: .
+    container_name: anamnez-ai
+    ports:
+      - "5001:5001"
+    volumes:
+      # Whisper model cache — her restart'ta tekrar indirmesin
+      - whisper-cache:/root/.cache/whisper
+      # SQLite veritabanı kalıcılığı
+      - ./instance:/app/instance
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+
+volumes:
+  whisper-cache:
