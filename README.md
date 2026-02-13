@@ -247,11 +247,6 @@ Feel free to fork and adapt for your use case.
 
 ---
 
-## 📄 License
-
-MIT License — See [LICENSE](LICENSE) for details.
-
----
 
 ## 👨‍💻 Author
 
